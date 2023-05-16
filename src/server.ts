@@ -8,16 +8,6 @@ const server: Server = createServer((request, response: ServerResponse) => {
   response.end("Hello World!\n");
 });
 
-// (async () => {
-//   const bot = new Bot();
-//   await bot.init();
-//   await bot.goto("https://www.nerdbord.io");
-
-//   await bot.Scrapper.makePdf("./examplePdf.pdf", "A4");
-
-//   await bot.close();
-// })();
-
 server.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}/`);
 });
