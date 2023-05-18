@@ -42,7 +42,6 @@ export class Bot {
     const searchInputSelector = inputSelector;
     await this.page.waitForSelector(searchInputSelector);
 
-    //fill input
     await this.page.type(searchInputSelector, fillQuery);
 
     //click first element
