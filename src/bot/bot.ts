@@ -13,15 +13,15 @@ export class Bot {
   public Scrapper: Scrapper;
   public config: ScrapperOptions;
 
-  constructor() {
+  constructor(config: ScrapperOptions) {
     this.browser = null;
     this.page = null;
-    this.config = null;
+    this.config = this.config;
     this.Scrapper = new Scrapper(this.page, this.config);
   }
 
-  async init() {
-    this.browser = await puppeteer.launch({ headless: false });
+  async init(headlesType: boolean | "new") {
+    this.browser = await puppeteer.launch({ headless: headlesType });
     this.page = await this.browser.newPage();
     this.Scrapper = new Scrapper(this.page, this.config);
   }
@@ -30,11 +30,10 @@ export class Bot {
     if (!this.page) {
       throw new Error("Browser page is not initialized");
     }
-
     await this.page.goto(url);
   }
 
-  async typeSearch(
+  async useSearch(
     inputSelector: string,
     fillQuery: string,
     confirmFirstEl: string
@@ -59,13 +58,3 @@ export class Bot {
 
   // Metody specyficzne dla Scrapper
 }
-
-// (async () => {
-//   const bot = new Bot();
-//   await bot.init();
-//   await bot.goto("https://www.simplecargo.networkmanager.pl");
-
-//   await bot.Scrapper.makePdf("./examplePdf");
-
-//   await bot.close();
-// })();

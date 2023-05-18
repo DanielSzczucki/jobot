@@ -14,38 +14,32 @@ export class Scrapper {
     await this.page.pdf({ path: `${path}`, format: `${format}` });
   }
 
+  async logger(element: string) {
+    console.log(`logged: ${element}`);
+  }
+
   async getPageTitle(): Promise<string> {
     const pageTitle = await this.page.evaluate(() => document.title);
     return pageTitle;
   }
 
-  async getHtmlElementData(selector: string) {
-    // Get courses
+  async getHtmlElementData<T extends HTMLElement>(
+    parentSelector: string,
+    childSelector: string
+  ) {
+    const element = await this.page.evaluate(
+      (parentSelector, childSelector) => {
+        const parentElement = document.querySelector(parentSelector);
+        const childElement =
+          parentElement.querySelector<T>(childSelector).innerText;
+        return { childElement };
+      },
+      parentSelector,
+      childSelector
+    );
 
-    // const courses = await this.page.$$eval("#courses .card", (elements) =>
-    //   elements.map((e) => ({
-    //     title: e.querySelector<HTMLElement>(".card-body h3").innerText,
-    //     level: e.querySelector<HTMLElement>(".card-body .level").innerText,
-    //     url: e.querySelector<HTMLAnchorElement>(".card-footer a").href,
-    //     promo: e.querySelector<HTMLElement>(".card-footer .promo-code .promo")
-    //       .innerText,
-    //   }))
-    // );
-
-    const offerts = await this.page.evaluate(() => {
-      // Fetch the first element with class "quote"
-      const offer = document.querySelector(".css-1id4k1");
-
-      // Fetch the sub-elements from the previously fetched quote element
-      // Get the displayed text and return it (`.innerText`)
-      const title = offer.querySelector<HTMLElement>(".text").innerText;
-      const author = offer.querySelector<HTMLElement>(".author").innerText;
-
-      return { title, author };
-    });
-
-    // Display the quotes
-    console.log(offerts);
+    console.log(element);
+    return element;
   }
 
   // Metody do pobierania danych (cena, opis itp.)

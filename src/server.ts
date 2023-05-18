@@ -1,5 +1,4 @@
 import { createServer, Server, ServerResponse } from "http";
-import { Bot } from "./bot/bot";
 
 const PORT = 4200 || process.env.PORT;
 
