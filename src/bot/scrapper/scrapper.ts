@@ -45,7 +45,7 @@ export class Scrapper {
   async createObjectArray<T>(
     elements: HTMLElement[],
     mappingFunction: (element: HTMLElement) => T,
-    length?: number
+    length: number = this.config.maxRecords
   ) {
     const objectArray = [];
 
