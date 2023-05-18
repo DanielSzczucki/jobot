@@ -42,5 +42,26 @@ export class Scrapper {
     return element;
   }
 
+  async createObjectArray<T>(
+    elements: HTMLElement[],
+    mappingFunction: (element: HTMLElement) => T,
+    length?: number
+  ) {
+    const objectArray = [];
+
+    const maxIterations =
+      length !== undefined
+        ? Math.min(length, elements.length)
+        : elements.length;
+
+    for (let i = 0; i < maxIterations; i++) {
+      const element = elements[i];
+      const mappedObject = mappingFunction(element);
+      objectArray.push(mappedObject);
+    }
+
+    return objectArray;
+  }
+
   // Metody do pobierania danych (cena, opis itp.)
 }
