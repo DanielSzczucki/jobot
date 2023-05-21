@@ -30,7 +30,9 @@ export class Bot {
     if (!this.page) {
       throw new Error("Browser page is not initialized");
     }
-    await this.page.goto(url);
+    await this.page.goto(url, {
+      waitUntil: "domcontentloaded",
+    });
   }
 
   async useSearch(

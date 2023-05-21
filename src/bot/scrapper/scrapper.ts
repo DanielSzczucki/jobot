@@ -23,6 +23,19 @@ export class Scrapper {
     return pageTitle;
   }
 
+  getHtmlElement = async (parentSelector: string, childSelector: string) => {
+    const element = await this.page.evaluate(
+      (parentSelector, childSelector) => {
+        const parentElement = document.querySelector(parentSelector);
+        const childElement =
+          parentElement.querySelector<HTMLAnchorElement>(childSelector).href;
+        return { childElement };
+      },
+      parentSelector,
+      childSelector
+    );
+  };
+
   async getHtmlElementData<T extends HTMLElement>(
     parentSelector: string,
     childSelector: string
@@ -61,6 +74,12 @@ export class Scrapper {
     }
 
     return objectArray;
+  }
+
+  async getPageContent() {
+    //get full page html
+    const html = await this.page.content();
+    return html;
   }
 
   async getAllData<T extends HTMLElement>(

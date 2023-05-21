@@ -1,7 +1,8 @@
 import { createServer, Server, ServerResponse } from "http";
-import { Bot } from "./bot/bot";
-import puppeteer from "puppeteer-extra";
+import puppeteer, { ElementHandle, Page } from "puppeteer";
+import puppeteerExtra from "puppeteer-extra";
 import stealthPlugin from "puppeteer-extra-plugin-stealth";
+import * as fs from "fs/promises";
 
 const PORT = 4200 || process.env.PORT;
 
@@ -10,36 +11,129 @@ const server: Server = createServer((request, response: ServerResponse) => {
   response.end("Hello World!\n");
 });
 
-puppeteer.use(stealthPlugin());
+puppeteerExtra.use(stealthPlugin());
 
-const config = {
-  searchValue: "JavaScript",
-  maxRecords: 10,
-};
+async function scrollToElement(
+  element: ElementHandle<HTMLDivElement>,
+  scrollCount: number
+) {
+  for (let i = 0; i < scrollCount; i++) {
+    await element.scrollIntoView();
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+}
 
-const pairs = {
-  title: "div > .jss232",
-  offerURL: "div > a",
-};
+// async function scrollAndScrape(
+//   page: Page,
+//   selector: string,
+//   recordCount: number
+// ) {
+//   let items = [];
+//   while (items.length < recordCount) {
+//     const newItems = await page.$$eval(selector, (elements) =>
+//       elements.map((e) => {
+//         const anchorElement =
+//           e.querySelector<HTMLAnchorElement>("div > div > a");
+//         return anchorElement?.href || "";
+//       })
+//     );
+//     await new Promise((resolve) => setTimeout(resolve, 3000));
+//     items = items.concat(newItems);
 
-const parentElement = "div > .root";
+//     const lastUrl = newItems[newItems.length - 1];
+//     await page.evaluate((lastUrl) => {
+//       const element = document.querySelector(
+//         `div > div > a[href="${lastUrl}"]`
+//       );
+//       element?.scrollIntoView();
+//     }, lastUrl);
+
+//     await new Promise((resolve) => setTimeout(resolve, 1000)); // Oczekiwanie na przewinięcie, 2000 ms
+//   }
+
+//   const urls = items.slice(0, recordCount);
+//   console.log(urls);
+// }
+
+//actually ewerything inside function is working, have discard mouse, replece with code scrolling. have to divide, add record lenght.
 
 (async () => {
-  const bot = new Bot(config);
+  // Inicjalizacja przeglądarki
+  const browser = await puppeteer.launch({ headless: "new" });
+  const page = await browser.newPage();
 
-  await bot.init(false);
-  await bot.goto("https://justjoin.it/all/javascript");
+  // Przechodzimy na stronę JustJoinIT
+  await page.goto("https://justjoin.it/", {
+    waitUntil: "domcontentloaded",
+  });
 
-  const pageTitle = await bot.Scrapper.getPageTitle();
-  console.log(pageTitle);
+  const selectorWhat = "input.MuiInputBase-input";
+  const nodeoptions = "div.css-ic7v2w > div > div";
+  const recordCount = 30; // Liczba rekordów do pobrania
+  page.setViewport({ width: 1280, height: 926 });
+  await new Promise((resolve) => setTimeout(resolve, 4000));
+  // Wykonujemy akcje na stronie
 
-  const data = await bot.Scrapper.getAllData(".css-ic7v2w", pairs, 10);
+  await page.waitForSelector(selectorWhat);
+  await page.click(selectorWhat);
 
-  console.log(data);
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+  await page.type(selectorWhat, "JavaScript");
 
-  await bot.close();
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+  await page.keyboard.press("Enter");
+  await new Promise((resolve) => setTimeout(resolve, 3000)); // Oczekiwanie na przewinięcie, 2000 ms
+
+  await page.waitForSelector(nodeoptions);
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+  // class="css-ic7v2w"
+
+  const fieldHandle = await page.$(nodeoptions);
+  const fieldBoundingBox = await fieldHandle.boundingBox();
+  const fieldX = fieldBoundingBox.x + fieldBoundingBox.width / 2;
+  const fieldY = fieldBoundingBox.y + fieldBoundingBox.height / 2;
+  await page.mouse.move(fieldX, fieldY);
+
+  const scrollCount = 10;
+  for (let i = 0; i < scrollCount; i++) {
+    await page.mouse.wheel({ deltaY: 100 }); // Przewiń w dół o 100 jednostek
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // Poczekaj przez 1 sekundę po przewinięciu
+  }
+
+  const courses = await page.$$eval(nodeoptions, (elements) =>
+    elements.map((e) => ({
+      // title: e.querySelector('.card-body h3').innerText,
+      // level: e.querySelector('.card-body .level').innerText,
+      url: e.querySelector("a").href,
+      // promo: e.querySelector('.card-footer .promo-code .promo').innerText,
+    }))
+  );
+
+  console.log(courses);
+
+  // await page.close();
 })();
 
-server.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}/`);
-});
+// (async () => {
+//   const bot = new Bot(config);
+
+//   await bot.init(false);
+//   await bot.goto("https://justjoin.it/all/javascript");
+
+//   const pageTitle = await bot.Scrapper.getPageTitle();
+//   console.log(pageTitle);
+//   const parentElement = "div > .root";
+
+//   const data = await bot.Scrapper.getHtmlElement(parentElement, pairs.offerURL);
+
+//   //store html content in the reactstorefront file
+//   await fs.writeFile("test.json", JSON.stringify(data), "utf-8");
+
+//   console.log(data);
+
+//   await bot.close();
+// })();
+
+// server.listen(PORT, () => {
+//   console.log(`Server running at http://localhost:${PORT}/`);
+// });
