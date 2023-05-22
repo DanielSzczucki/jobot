@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
-import puppeteer, { Page, Browser } from "puppeteer";
+import puppeteer, { Page, Browser, KeyInput } from "puppeteer";
 import { Scrapper } from "./scrapper/scrapper";
 import { ScrapperOptions } from "../utills/types";
 
@@ -35,20 +35,69 @@ export class Bot {
     });
   }
 
-  async useSearch(
+  async useInputElementToFillQuery(
+    page: Page,
     inputSelector: string,
     fillQuery: string,
-    confirmFirstEl: string
+    pressKey: KeyInput,
+    timeDelay: number
   ) {
-    //find a search input
-    const searchInputSelector = inputSelector;
-    await this.page.waitForSelector(searchInputSelector);
+    //do some actions on webpage, fill input and take first element
 
-    await this.page.type(searchInputSelector, fillQuery);
+    //wait for selected html elemnt
+    await page.waitForSelector(inputSelector);
+    //click on it;
+    await page.click(inputSelector);
+    //delay for content loading
+    await new Promise((resolve) => setTimeout(resolve, timeDelay));
+    //take input, fill query
+    await page.type(inputSelector, fillQuery);
+    //wait for loading elemnts
+    await new Promise((resolve) => setTimeout(resolve, timeDelay));
+    //confitm and add some delay
+    await page.keyboard.press(pressKey);
+    await new Promise((resolve) => setTimeout(resolve, timeDelay));
+  }
 
-    //click first element
-    const confirmFirstElement = confirmFirstEl;
-    await this.page.click(confirmFirstElement);
+  async scrollPageElemntArea(
+    page: Page,
+    areaSelector: string,
+    scrollCount: number,
+    scrollDelay: number
+  ) {
+    await page.waitForSelector(areaSelector);
+    const areaElement = await page.$(areaSelector);
+
+    for (let i = 0; i < scrollCount; i++) {
+      await page.evaluate((element) => {
+        element.scrollTop += element.clientHeight;
+      }, areaElement);
+      await new Promise((resolve) => setTimeout(resolve, scrollDelay));
+    }
+  }
+
+  async mouseScrollOfElement(
+    page: Page,
+    areaSelector: string,
+    scrollCount: number,
+    scrollDealy: number
+  ) {
+    const fieldHandle = await page.$(areaSelector);
+    //set mouse area settings
+    const fieldBoundingBox = await fieldHandle.boundingBox();
+    const fieldX = fieldBoundingBox.x + fieldBoundingBox.width / 2;
+    const fieldY = fieldBoundingBox.y + fieldBoundingBox.height / 2;
+
+    //set mouse on area
+    await page.mouse.move(fieldX, fieldY);
+
+    //scroll
+    for (let i = 0; i < scrollCount; i++) {
+      //scroll lenght
+      await page.mouse.wheel({ deltaY: scrollDealy });
+      //scroll delay
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
   }
 
   async close() {
