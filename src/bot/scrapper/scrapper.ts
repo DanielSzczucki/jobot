@@ -55,34 +55,13 @@ export class Scrapper {
     return element;
   }
 
-  async createObjectArray<T>(
-    elements: HTMLElement[],
-    mappingFunction: (element: HTMLElement) => T,
-    length: number = this.config.maxRecords
-  ) {
-    const objectArray = [];
-
-    const maxIterations =
-      length !== undefined
-        ? Math.min(length, elements.length)
-        : elements.length;
-
-    for (let i = 0; i < maxIterations; i++) {
-      const element = elements[i];
-      const mappedObject = mappingFunction(element);
-      objectArray.push(mappedObject);
-    }
-
-    return objectArray;
-  }
-
   async getPageContent() {
     //get full page html
     const html = await this.page.content();
     return html;
   }
 
-  async getAllData<T extends HTMLElement>(
+  async getAllHtmlData<T extends HTMLElement>(
     parentSelector: string,
     elementsPairs: Record<string, string>,
     length: number = this.config.maxRecords
@@ -90,6 +69,7 @@ export class Scrapper {
     const elements = await this.page.evaluate(
       (selector, pairs, length) => {
         const elementsList = document.querySelectorAll(selector);
+
         const maxIterations =
           length !== undefined
             ? Math.min(length, elementsList.length)

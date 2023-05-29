@@ -3,6 +3,7 @@ import puppeteer, { ElementHandle, Page } from "puppeteer";
 import puppeteerExtra from "puppeteer-extra";
 import stealthPlugin from "puppeteer-extra-plugin-stealth";
 import * as fs from "fs/promises";
+import { Bot } from "./bot/bot";
 
 const PORT = 4200 || process.env.PORT;
 
@@ -13,53 +14,78 @@ const server: Server = createServer((request, response: ServerResponse) => {
 
 puppeteerExtra.use(stealthPlugin());
 
-async function scrollToElement(
-  element: ElementHandle<HTMLDivElement>,
-  scrollCount: number
+//actually ewerything inside function is working, have discard mouse, replece with code scrolling. have to divide, add record lenght.
+
+async function scrollElements(
+  page: Page,
+  elementSelector: string,
+  itemCount: number,
+  scrollDealay: number
 ) {
-  for (let i = 0; i < scrollCount; i++) {
-    await element.scrollIntoView();
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+  try {
+    const elements = await page.$$(elementSelector);
+
+    for (let i = 0; i < itemCount && i < elements.length; i++) {
+      const element = elements[i];
+
+      await page.evaluate((el) => el.scrollIntoView(), element);
+      await new Promise((resolve) => setTimeout(resolve, scrollDealay));
+    }
+  } catch (e) {
+    console.log(e);
   }
 }
 
-// async function scrollAndScrape(
-//   page: Page,
-//   selector: string,
-//   recordCount: number
-// ) {
-//   let items = [];
-//   while (items.length < recordCount) {
-//     const newItems = await page.$$eval(selector, (elements) =>
-//       elements.map((e) => {
-//         const anchorElement =
-//           e.querySelector<HTMLAnchorElement>("div > div > a");
-//         return anchorElement?.href || "";
-//       })
-//     );
-//     await new Promise((resolve) => setTimeout(resolve, 3000));
-//     items = items.concat(newItems);
+const getAllHtmlData = async (
+  page: Page,
+  parentSelector: string,
+  elementsPairs: Record<string, string>,
+  length: number
+) => {
+  const elements = await page.evaluate(
+    (parentSelector, elementsPairs, length) => {
+      const elementsList = document.querySelectorAll(parentSelector);
 
-//     const lastUrl = newItems[newItems.length - 1];
-//     await page.evaluate((lastUrl) => {
-//       const element = document.querySelector(
-//         `div > div > a[href="${lastUrl}"]`
-//       );
-//       element?.scrollIntoView();
-//     }, lastUrl);
+      const maxIterations =
+        length !== undefined
+          ? Math.min(length, elementsList.length)
+          : elementsList.length;
 
-//     await new Promise((resolve) => setTimeout(resolve, 1000)); // Oczekiwanie na przewinięcie, 2000 ms
-//   }
+      return Array.from(elementsList)
+        .slice(0, maxIterations)
+        .map((element) => {
+          const data = {};
+          for (const key in elementsPairs) {
+            const childSelector = elementsPairs[key];
+            console.log("child Selector", childSelector);
 
-//   const urls = items.slice(0, recordCount);
-//   console.log(urls);
-// }
+            if (childSelector === "offerURL") {
+              const value =
+                element.querySelector<HTMLAnchorElement>(childSelector)?.href ||
+                "";
+              data[key] = value;
+            } else {
+              const value =
+                element.querySelector<HTMLElement>(childSelector)?.innerText ||
+                "";
+              data[key] = value;
+            }
+          }
+          return data;
+        });
+    },
+    parentSelector,
+    elementsPairs,
+    length
+  );
 
-//actually ewerything inside function is working, have discard mouse, replece with code scrolling. have to divide, add record lenght.
+  console.log(elements);
+  return elements;
+};
 
 (async () => {
   // Inicjalizacja przeglądarki
-  const browser = await puppeteer.launch({ headless: "new" });
+  const browser = await puppeteer.launch({ headless: false });
   const page = await browser.newPage();
 
   // Przechodzimy na stronę JustJoinIT
@@ -69,6 +95,7 @@ async function scrollToElement(
 
   const selectorWhat = "input.MuiInputBase-input";
   const nodeoptions = "div.css-ic7v2w > div > div";
+  const elementToScroll = "div.css-ic7v2w > div > div";
   const recordCount = 30; // Liczba rekordów do pobrania
   page.setViewport({ width: 1280, height: 926 });
   await new Promise((resolve) => setTimeout(resolve, 4000));
@@ -88,43 +115,65 @@ async function scrollToElement(
   await new Promise((resolve) => setTimeout(resolve, 3000));
   // class="css-ic7v2w"
 
-  const fieldHandle = await page.$(nodeoptions);
-  const fieldBoundingBox = await fieldHandle.boundingBox();
-  const fieldX = fieldBoundingBox.x + fieldBoundingBox.width / 2;
-  const fieldY = fieldBoundingBox.y + fieldBoundingBox.height / 2;
-  await page.mouse.move(fieldX, fieldY);
+  // const fieldHandle = await page.$(nodeoptions);
+  // const fieldBoundingBox = await fieldHandle.boundingBox();
+  // const fieldX = fieldBoundingBox.x + fieldBoundingBox.width / 2;
+  // const fieldY = fieldBoundingBox.y + fieldBoundingBox.height / 2;
+  // await page.mouse.move(fieldX, fieldY);
 
-  const scrollCount = 10;
-  for (let i = 0; i < scrollCount; i++) {
-    await page.mouse.wheel({ deltaY: 100 }); // Przewiń w dół o 100 jednostek
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // Poczekaj przez 1 sekundę po przewinięciu
-  }
+  // const scrollCount = 20;
+  // for (let i = 0; i < scrollCount; i++) {
+  //   await page.mouse.wheel({ deltaY: 100 }); // Przewiń w dół o 100 jednostek
+  //   await new Promise((resolve) => setTimeout(resolve, 800)); // Poczekaj przez 1 sekundę po przewinięciu
+  // }
+  const config = {
+    searchValue: "JavaScript",
+    maxRecords: 10,
+  };
 
-  const courses = await page.$$eval(nodeoptions, (elements) =>
-    elements.map((e) => ({
-      // title: e.querySelector('.card-body h3').innerText,
-      // level: e.querySelector('.card-body .level').innerText,
-      url: e.querySelector("a").href,
-      // promo: e.querySelector('.card-footer .promo-code .promo').innerText,
-    }))
-  );
+  const pairs = {
+    offerURL: "div.css-ic7v2w > div > div > a",
+  };
 
-  console.log(courses);
-
+  const offers = await getAllHtmlData(page, nodeoptions, pairs, 20);
+  await scrollElements(page, nodeoptions, 20, 600);
+  // const offers = await page.$$eval(nodeoptions, (elements) =>
+  //   elements.map((e) => ({
+  //     // title: e.querySelector(selector).innerText,
+  //     // level: e.querySelector(selector).innerText,
+  //     url: e.querySelector("a").href,
+  //     // promo: e.querySelector(selector)).innerText,
+  //   }))
+  // );
+  console.log(offers);
   // await page.close();
 })();
 
 // (async () => {
+//   const config = {
+//     searchValue: "JavaScript",
+//     maxRecords: 10,
+//   };
+
+//   const pairs = {
+//     offerURL: "div.css-ic7v2w > div > div > a",
+//   };
+
 //   const bot = new Bot(config);
 
 //   await bot.init(false);
 //   await bot.goto("https://justjoin.it/all/javascript");
 
-//   const pageTitle = await bot.Scrapper.getPageTitle();
-//   console.log(pageTitle);
-//   const parentElement = "div > .root";
+//   const nodeoptions = "div.css-ic7v2w > div > div";
 
-//   const data = await bot.Scrapper.getHtmlElement(parentElement, pairs.offerURL);
+//   const data = await bot.Scrapper.getAllHtmlData(nodeoptions, pairs, 20);
+
+//   await bot.mouseScrollOfElement(
+//     bot.page,
+//     "div.css-ic7v2w > div > div",
+//     30,
+//     400
+//   );
 
 //   //store html content in the reactstorefront file
 //   await fs.writeFile("test.json", JSON.stringify(data), "utf-8");

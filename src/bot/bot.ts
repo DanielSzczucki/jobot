@@ -9,7 +9,7 @@ const PAGE_SCREEN = process.env.SCRAPED_PDF || null;
 
 export class Bot {
   private browser: Browser | null;
-  private page: Page | null;
+  public page: Page | null;
   public Scrapper: Scrapper;
   public config: ScrapperOptions;
 
@@ -59,32 +59,17 @@ export class Bot {
     await new Promise((resolve) => setTimeout(resolve, timeDelay));
   }
 
-  async scrollPageElemntArea(
-    page: Page,
-    areaSelector: string,
-    scrollCount: number,
-    scrollDelay: number
-  ) {
-    await page.waitForSelector(areaSelector);
-    const areaElement = await page.$(areaSelector);
-
-    for (let i = 0; i < scrollCount; i++) {
-      await page.evaluate((element) => {
-        element.scrollTop += element.clientHeight;
-      }, areaElement);
-      await new Promise((resolve) => setTimeout(resolve, scrollDelay));
-    }
-  }
-
   async mouseScrollOfElement(
     page: Page,
     areaSelector: string,
     scrollCount: number,
     scrollDealy: number
   ) {
+    await page.waitForSelector(areaSelector);
     const fieldHandle = await page.$(areaSelector);
     //set mouse area settings
     const fieldBoundingBox = await fieldHandle.boundingBox();
+
     const fieldX = fieldBoundingBox.x + fieldBoundingBox.width / 2;
     const fieldY = fieldBoundingBox.y + fieldBoundingBox.height / 2;
 
