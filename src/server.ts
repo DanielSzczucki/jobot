@@ -35,7 +35,7 @@ async function scrollElements(
     console.log(e);
   }
 }
-
+//debug needed - cant return data
 const getAllHtmlData = async (
   page: Page,
   parentSelector: string,
