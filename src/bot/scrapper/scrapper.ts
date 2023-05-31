@@ -79,10 +79,11 @@ export class Scrapper {
           .slice(0, maxIterations)
           .map((element) => {
             const data = {};
-            for (const key in pairs) {
-              const childSelector = pairs[key];
+            for (const [key, selector] of Object.entries(pairs)) {
+              const childSelector = selector;
+              const dataKey = key;
 
-              if (childSelector === "offerURL") {
+              if (dataKey === "offerURL") {
                 const value =
                   element.querySelector<HTMLAnchorElement>(childSelector)
                     ?.href || "";

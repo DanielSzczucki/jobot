@@ -14,7 +14,56 @@ const server: Server = createServer((request, response: ServerResponse) => {
 
 puppeteerExtra.use(stealthPlugin());
 
-//actually ewerything inside function is working, have discard mouse, replece with code scrolling. have to divide, add record lenght.
+// actually ewerything inside function is working, have discard mouse, replece with code scrolling. have to divide, add record lenght.
+
+// Puppeteer will not run without these lines
+
+const getAllData = async (
+  page: Page,
+  parentSelector: string,
+  elementsPairs: Record<string, string>,
+  length: number
+) => {
+  const elements = await page.evaluate(
+    (selector: string, pairs: Record<string, string>, maxLength: number) => {
+      const elementsList = document.querySelectorAll(selector);
+
+      const maxIterations =
+        maxLength !== undefined
+          ? Math.min(maxLength, elementsList.length)
+          : elementsList.length;
+
+      return Array.from(elementsList)
+        .slice(0, maxIterations)
+        .map((element) => {
+          const data = {};
+
+          for (const [key, selector] of Object.entries(pairs)) {
+            const childSelector = selector;
+            const dataKey = key;
+
+            if (dataKey === "offerURL") {
+              const value =
+                element.querySelector<HTMLAnchorElement>(childSelector)?.href ||
+                "";
+              data[key] = value;
+            } else {
+              const value =
+                element.querySelector<HTMLElement>(childSelector)?.innerText ||
+                "";
+              data[key] = value;
+            }
+          }
+          return data;
+        });
+    },
+    parentSelector,
+    elementsPairs,
+    length
+  );
+
+  return elements;
+};
 
 async function scrollElements(
   page: Page,
@@ -35,53 +84,8 @@ async function scrollElements(
     console.log(e);
   }
 }
-//debug needed - cant return data
-const getAllHtmlData = async (
-  page: Page,
-  parentSelector: string,
-  elementsPairs: Record<string, string>,
-  length: number
-) => {
-  const elements = await page.evaluate(
-    (parentSelector, elementsPairs, length) => {
-      const elementsList = document.querySelectorAll(parentSelector);
 
-      const maxIterations =
-        length !== undefined
-          ? Math.min(length, elementsList.length)
-          : elementsList.length;
-
-      return Array.from(elementsList)
-        .slice(0, maxIterations)
-        .map((element) => {
-          const data = {};
-          for (const key in elementsPairs) {
-            const childSelector = elementsPairs[key];
-            console.log("child Selector", childSelector);
-
-            if (childSelector === "offerURL") {
-              const value =
-                element.querySelector<HTMLAnchorElement>(childSelector)?.href ||
-                "";
-              data[key] = value;
-            } else {
-              const value =
-                element.querySelector<HTMLElement>(childSelector)?.innerText ||
-                "";
-              data[key] = value;
-            }
-          }
-          return data;
-        });
-    },
-    parentSelector,
-    elementsPairs,
-    length
-  );
-
-  console.log(elements);
-  return elements;
-};
+// //debug needed - cant return data
 
 (async () => {
   // Inicjalizacja przeglądarki
@@ -97,7 +101,7 @@ const getAllHtmlData = async (
   const nodeoptions = "div.css-ic7v2w > div > div";
   const elementToScroll = "div.css-ic7v2w > div > div";
   const recordCount = 30; // Liczba rekordów do pobrania
-  page.setViewport({ width: 1280, height: 926 });
+  page.setViewport({ width: 1080, height: 720 });
   await new Promise((resolve) => setTimeout(resolve, 4000));
   // Wykonujemy akcje na stronie
 
@@ -115,29 +119,16 @@ const getAllHtmlData = async (
   await new Promise((resolve) => setTimeout(resolve, 3000));
   // class="css-ic7v2w"
 
-  // const fieldHandle = await page.$(nodeoptions);
-  // const fieldBoundingBox = await fieldHandle.boundingBox();
-  // const fieldX = fieldBoundingBox.x + fieldBoundingBox.width / 2;
-  // const fieldY = fieldBoundingBox.y + fieldBoundingBox.height / 2;
-  // await page.mouse.move(fieldX, fieldY);
-
-  // const scrollCount = 20;
-  // for (let i = 0; i < scrollCount; i++) {
-  //   await page.mouse.wheel({ deltaY: 100 }); // Przewiń w dół o 100 jednostek
-  //   await new Promise((resolve) => setTimeout(resolve, 800)); // Poczekaj przez 1 sekundę po przewinięciu
-  // }
   const config = {
     searchValue: "JavaScript",
     maxRecords: 10,
   };
 
   const pairs = {
-    offerURL: "div.css-ic7v2w > div > div > a",
+    offerURL: "a",
   };
 
-  const offers = await getAllHtmlData(page, nodeoptions, pairs, 20);
-  await scrollElements(page, nodeoptions, 20, 600);
-  // const offers = await page.$$eval(nodeoptions, (elements) =>
+  // await page.$$eval(nodeoptions, (elements) =>
   //   elements.map((e) => ({
   //     // title: e.querySelector(selector).innerText,
   //     // level: e.querySelector(selector).innerText,
@@ -145,7 +136,28 @@ const getAllHtmlData = async (
   //     // promo: e.querySelector(selector)).innerText,
   //   }))
   // );
+
+  // const offers = [];
+
+  // for (let i = 0; i < 2; i++) {
+  //   await scrollElements(page, nodeoptions, 10, 100);
+  //   const data = await page.$$eval(nodeoptions, (elements) =>
+  //     elements.map((e) => ({
+  //       // title: e.querySelector(selector).innerText,
+  //       // level: e.querySelector(selector).innerText,
+  //       url: e.querySelector<HTMLAnchorElement>("a").href,
+  //       // promo: e.querySelector(selector)).innerText,
+  //     }))
+  //   );
+  //   offers.push(...data);
+  //   await scrollElements(page, nodeoptions, 10, 100);
+  // }
+  await scrollElements(page, nodeoptions, 20, 800);
+  const offers = await getAllData(page, nodeoptions, pairs, 10);
+
   console.log(offers);
+  console.log(offers.length);
+
   // await page.close();
 })();
 
@@ -166,7 +178,7 @@ const getAllHtmlData = async (
 
 //   const nodeoptions = "div.css-ic7v2w > div > div";
 
-//   const data = await bot.Scrapper.getAllHtmlData(nodeoptions, pairs, 20);
+//   const data = await bot.Scrapper.getAllHtmlData(nodeoptions, );
 
 //   await bot.mouseScrollOfElement(
 //     bot.page,
