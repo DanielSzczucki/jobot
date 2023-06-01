@@ -1,4 +1,4 @@
-import puppeteer, { Browser, Page, PaperFormat } from "puppeteer";
+import { Page, PaperFormat } from "puppeteer";
 import { ScrapperOptions } from "../../utills/types";
 
 export class Scrapper {
@@ -14,71 +14,100 @@ export class Scrapper {
     await this.page.pdf({ path: `${path}`, format: `${format}` });
   }
 
-  async logger(element: string) {
-    console.log(`logged: ${element}`);
-  }
-
   async getPageTitle(): Promise<string> {
     const pageTitle = await this.page.evaluate(() => document.title);
     return pageTitle;
   }
 
-  getHtmlElement = async (parentSelector: string, childSelector: string) => {
-    const element = await this.page.evaluate(
-      (parentSelector, childSelector) => {
-        const parentElement = document.querySelector(parentSelector);
-        const childElement =
-          parentElement.querySelector<HTMLAnchorElement>(childSelector).href;
-        return { childElement };
-      },
-      parentSelector,
-      childSelector
-    );
-  };
-
-  async getHtmlElementData<T extends HTMLElement>(
+  async getElementsList(
+    page: Page,
     parentSelector: string,
-    childSelector: string
-  ) {
-    const element = await this.page.evaluate(
-      (parentSelector, childSelector) => {
-        const parentElement = document.querySelector(parentSelector);
-        const childElement =
-          parentElement.querySelector<T>(childSelector).innerText;
-        return { childElement };
-      },
-      parentSelector,
-      childSelector
-    );
-
-    console.log(element);
-    return element;
-  }
-
-  async getPageContent() {
-    //get full page html
-    const html = await this.page.content();
-    return html;
-  }
-
-  async getAllHtmlData<T extends HTMLElement>(
-    parentSelector: string,
-    elementsPairs: Record<string, string>,
-    length: number = this.config.maxRecords
-  ) {
-    const elements = await this.page.evaluate(
-      (selector, pairs, length) => {
+    maxLength: number
+  ): Promise<HTMLElement[]> {
+    return await page.evaluate(
+      (selector: string, maxLength: number) => {
         const elementsList = document.querySelectorAll(selector);
 
         const maxIterations =
-          length !== undefined
-            ? Math.min(length, elementsList.length)
+          maxLength !== undefined
+            ? Math.min(maxLength, elementsList.length)
+            : elementsList.length;
+
+        return Array.from(elementsList).slice(
+          0,
+          maxIterations
+        ) as HTMLElement[];
+      },
+      parentSelector,
+      maxLength
+    );
+  }
+
+  async extractDataFromElements(
+    elements: HTMLElement[],
+    pairs: Record<string, string>
+  ): Promise<Record<string, string>[]> {
+    const extractedData: Record<string, string>[] = [];
+
+    for (const element of elements) {
+      const data: Record<string, string> = {};
+
+      for (const [key, selector] of Object.entries(pairs)) {
+        const childSelector = selector;
+        const dataKey = key;
+
+        if (dataKey === "offerURL") {
+          const value =
+            element.querySelector<HTMLAnchorElement>(childSelector)?.href || "";
+          data[key] = value;
+        } else {
+          const value =
+            element.querySelector<HTMLElement>(childSelector)?.innerText || "";
+          data[key] = value;
+        }
+      }
+
+      extractedData.push(data);
+    }
+
+    return extractedData;
+  }
+
+  async getGroupHtmlElementsData(
+    page: Page,
+    parentSelector: string,
+    elementsPairs: Record<string, string>,
+    length: number
+  ): Promise<Record<string, string>[]> {
+    const elements = await this.getElementsList(page, parentSelector, length);
+    const extractedData = await this.extractDataFromElements(
+      elements,
+      elementsPairs
+    );
+
+    return extractedData;
+  }
+  //propably works good, have to check it in oop
+  async getHtmlElementsData(
+    page: Page,
+    parentSelector: string,
+    elementsPairs: Record<string, string>,
+    length: number
+  ) {
+    const elements = await page.evaluate(
+      (selector: string, pairs: Record<string, string>, maxLength: number) => {
+        const elementsList = document.querySelectorAll(selector);
+
+        const maxIterations =
+          maxLength !== undefined
+            ? Math.min(maxLength, elementsList.length)
             : elementsList.length;
 
         return Array.from(elementsList)
           .slice(0, maxIterations)
           .map((element) => {
             const data = {};
+
             for (const [key, selector] of Object.entries(pairs)) {
               const childSelector = selector;
               const dataKey = key;
@@ -90,7 +119,8 @@ export class Scrapper {
                 data[key] = value;
               } else {
                 const value =
-                  element.querySelector<T>(childSelector)?.innerText || "";
+                  element.querySelector<HTMLElement>(childSelector)
+                    ?.innerText || "";
                 data[key] = value;
               }
             }
@@ -102,8 +132,82 @@ export class Scrapper {
       length
     );
 
-    console.log(elements);
     return elements;
+  }
+
+  async getAllData(
+    page: Page,
+    parentSelector: string,
+    elementsPairs: Record<string, string>,
+    length: number
+  ) {
+    const elements = await page.evaluate(
+      (selector: string, pairs: Record<string, string>, maxLength: number) => {
+        const elementsList = document.querySelectorAll(selector);
+
+        const maxIterations =
+          maxLength !== undefined
+            ? Math.min(maxLength, elementsList.length)
+            : elementsList.length;
+
+        return Array.from(elementsList)
+          .slice(0, maxIterations)
+          .map((element) => {
+            const data = {};
+
+            for (const [key, selector] of Object.entries(pairs)) {
+              const childSelector = selector;
+              const dataKey = key;
+
+              if (dataKey === "offerURL") {
+                const value =
+                  element.querySelector<HTMLAnchorElement>(childSelector)
+                    ?.href || "";
+                data[key] = value;
+              } else {
+                const value =
+                  element.querySelector<HTMLElement>(childSelector)
+                    ?.innerText || "";
+                data[key] = value;
+              }
+            }
+            return data;
+          });
+      },
+      parentSelector,
+      elementsPairs,
+      length
+    );
+
+    return elements;
+  }
+
+  async scrollElements(
+    page: Page,
+    elementSelector: string,
+    itemCount: number,
+    scrollDealay: number
+  ) {
+    try {
+      const elements = await page.$$(elementSelector);
+
+      for (let i = 0; i < itemCount && i < elements.length; i++) {
+        const element = elements[i];
+
+        await page.evaluate((el) => el.scrollIntoView(), element);
+        await new Promise((resolve) => setTimeout(resolve, scrollDealay));
+      }
+    } catch (e) {
+      console.log(e);
+    }
+  }
+
+  //get node
+
+  async getPageContent() {
+    //get full page html
+    const html = await this.page.content();
+    return html;
   }
 
   async getJSON() {

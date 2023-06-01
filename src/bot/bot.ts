@@ -35,6 +35,10 @@ export class Bot {
     });
   }
 
+  async setViewPortResolution(width: number, height: number) {
+    this.page.setViewport({ width: width, height: height });
+  }
+
   async useInputElementToFillQuery(
     page: Page,
     inputSelector: string,
@@ -82,6 +86,26 @@ export class Bot {
       await page.mouse.wheel({ deltaY: scrollDealy });
       //scroll delay
       await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
+
+  async scrollElements(
+    page: Page,
+    elementSelector: string,
+    itemCount: number,
+    scrollDealay: number
+  ) {
+    try {
+      const elements = await page.$$(elementSelector);
+
+      for (let i = 0; i < itemCount && i < elements.length; i++) {
+        const element = elements[i];
+
+        await page.evaluate((el) => el.scrollIntoView(), element);
+        await new Promise((resolve) => setTimeout(resolve, scrollDealay));
+      }
+    } catch (e) {
+      console.log(e);
     }
   }
 
