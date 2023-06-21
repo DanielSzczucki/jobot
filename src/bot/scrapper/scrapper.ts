@@ -24,7 +24,7 @@ export class Scrapper {
     parentSelector: string,
     maxLength: number
   ): Promise<HTMLElement[]> {
-    return await page.evaluate(
+    const nodeListodElement = await page.evaluate(
       (selector: string, maxLength: number) => {
         const elementsList = document.querySelectorAll(selector);
 
@@ -41,101 +41,49 @@ export class Scrapper {
       parentSelector,
       maxLength
     );
+    console.log("elements:", nodeListodElement);
+    return nodeListodElement;
   }
 
-  async extractDataFromElements(
-    elements: HTMLElement[],
+  getElementData(
+    element: Element,
     pairs: Record<string, string>
-  ): Promise<Record<string, string>[]> {
-    const extractedData: Record<string, string>[] = [];
+  ): Record<string, string> {
+    const data: Record<string, string> = {};
 
-    for (const element of elements) {
-      const data: Record<string, string> = {};
+    for (const [key, selector] of Object.entries(pairs)) {
+      const childSelector = selector;
+      const dataKey = key;
 
-      for (const [key, selector] of Object.entries(pairs)) {
-        const childSelector = selector;
-        const dataKey = key;
-
-        if (dataKey === "offerURL") {
-          const value =
-            element.querySelector<HTMLAnchorElement>(childSelector)?.href || "";
-          data[key] = value;
-        } else {
-          const value =
-            element.querySelector<HTMLElement>(childSelector)?.innerText || "";
-          data[key] = value;
-        }
+      if (dataKey === "offerURL") {
+        const value =
+          element.querySelector<HTMLAnchorElement>(childSelector)?.href || "";
+        data[key] = value;
+      } else {
+        const value =
+          element.querySelector<HTMLElement>(childSelector)?.innerText || "";
+        data[key] = value;
       }
-
-      extractedData.push(data);
     }
 
-    return extractedData;
+    return data;
   }
 
-  async getGroupHtmlElementsData(
+  async getHtmlElements(
     page: Page,
     parentSelector: string,
     elementsPairs: Record<string, string>,
-    length: number
-  ): Promise<Record<string, string>[]> {
+    length?: number
+  ) {
     const elements = await this.getElementsList(page, parentSelector, length);
-    const extractedData = await this.extractDataFromElements(
-      elements,
-      elementsPairs
-    );
 
-    return extractedData;
+    return elements.map((element) =>
+      this.getElementData(element, elementsPairs)
+    );
   }
+
   //propably works good, have to check it in oop
   async getHtmlElementsData(
-    page: Page,
-    parentSelector: string,
-    elementsPairs: Record<string, string>,
-    length: number
-  ) {
-    const elements = await page.evaluate(
-      (selector: string, pairs: Record<string, string>, maxLength: number) => {
-        const elementsList = document.querySelectorAll(selector);
-
-        const maxIterations =
-          maxLength !== undefined
-            ? Math.min(maxLength, elementsList.length)
-            : elementsList.length;
-
-        return Array.from(elementsList)
-          .slice(0, maxIterations)
-          .map((element) => {
-            const data = {};
-
-            for (const [key, selector] of Object.entries(pairs)) {
-              const childSelector = selector;
-              const dataKey = key;
-
-              if (dataKey === "offerURL") {
-                const value =
-                  element.querySelector<HTMLAnchorElement>(childSelector)
-                    ?.href || "";
-                data[key] = value;
-              } else {
-                const value =
-                  element.querySelector<HTMLElement>(childSelector)
-                    ?.innerText || "";
-                data[key] = value;
-              }
-            }
-            return data;
-          });
-      },
-      parentSelector,
-      elementsPairs,
-      length
-    );
-
-    return elements;
-  }
-
-  async getAllData(
     page: Page,
     parentSelector: string,
     elementsPairs: Record<string, string>,
