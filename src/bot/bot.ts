@@ -39,6 +39,14 @@ export class Bot {
     this.page.setViewport({ width: width, height: height });
   }
 
+  async pageWaitForSelector(selector: string) {
+    await this.page.waitForSelector(selector);
+  }
+
+  async waitMoment(scrollDealay: number) {
+    await new Promise((resolve) => setTimeout(resolve, scrollDealay));
+  }
+
   async useInputElementToFillQuery(
     page: Page,
     inputSelector: string,

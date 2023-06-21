@@ -1,8 +1,9 @@
 import { Page, PaperFormat } from "puppeteer";
 import { ScrapperOptions } from "../../utills/types";
+import { Bot } from "../bot";
 
 export class Scrapper {
-  private page: Page;
+  public page: Page;
   public config: ScrapperOptions;
 
   constructor(page: Page, config: ScrapperOptions) {
@@ -69,19 +70,6 @@ export class Scrapper {
     return data;
   }
 
-  async getHtmlElements(
-    page: Page,
-    parentSelector: string,
-    elementsPairs: Record<string, string>,
-    length?: number
-  ) {
-    const elements = await this.getElementsList(page, parentSelector, length);
-
-    return elements.map((element) =>
-      this.getElementData(element, elementsPairs)
-    );
-  }
-
   //propably works good, have to check it in oop
   async getHtmlElementsData(
     page: Page,
@@ -89,13 +77,18 @@ export class Scrapper {
     elementsPairs: Record<string, string>,
     length: number
   ) {
+    await this.scrollElements(this.page, parentSelector, 20, 200);
     const elements = await page.evaluate(
-      (selector: string, pairs: Record<string, string>, maxLength: number) => {
-        const elementsList = document.querySelectorAll(selector);
+      (
+        parentSelector: string,
+        pairs: Record<string, string>,
+        length: number
+      ) => {
+        const elementsList = document.querySelectorAll(parentSelector);
 
         const maxIterations =
-          maxLength !== undefined
-            ? Math.min(maxLength, elementsList.length)
+          length !== undefined
+            ? Math.min(length, elementsList.length)
             : elementsList.length;
 
         return Array.from(elementsList)
@@ -149,8 +142,6 @@ export class Scrapper {
       console.log(e);
     }
   }
-
-  //get node
 
   async getPageContent() {
     //get full page html
