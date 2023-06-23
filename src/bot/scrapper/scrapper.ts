@@ -77,7 +77,6 @@ export class Scrapper {
     elementsPairs: Record<string, string>,
     length: number
   ) {
-    await this.scrollElements(this.page, parentSelector, 20, 200);
     const elements = await page.evaluate(
       (
         parentSelector: string,
