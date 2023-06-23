@@ -2,7 +2,8 @@ import dotenv from "dotenv";
 dotenv.config();
 import puppeteer, { Page, Browser, KeyInput } from "puppeteer";
 import { Scrapper } from "./scrapper/scrapper";
-import { ScrapperOptions } from "../utills/types";
+import { ScrapperOptions, optionalParamsOffers } from "../utills/types";
+import { writeFile } from "fs/promises";
 
 const URL = process.env.URL || null;
 const PAGE_SCREEN = process.env.SCRAPED_PDF || null;
@@ -121,6 +122,10 @@ export class Bot {
     if (this.browser) {
       await this.browser.close();
     }
+  }
+
+  async writeData(data: optionalParamsOffers) {
+    writeFile("offers.json", JSON.stringify(data));
   }
 
   // Metody specyficzne dla Scrapper
