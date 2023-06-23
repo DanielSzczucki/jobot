@@ -35,12 +35,12 @@ const findOffers = async () => {
 
   //have to check is this working without for loop
 
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 1; i++) {
     await bot.pageWaitForSelector(nodeoptions);
     await bot.waitMoment(300);
 
     console.log("Scrapping...");
-    await bot.mouseScrollOfElement(bot.page, nodeoptions, 3, 200);
+    await bot.mouseScrollOfElement(bot.page, nodeoptions, 10, 90);
 
     const el = await bot.Scrapper.getHtmlElementsData(
       bot.page,
@@ -48,12 +48,19 @@ const findOffers = async () => {
       pairs,
       10
     );
-    data.push(el);
+    data.push(...el);
   }
 
   console.log("Data", data);
 
   await bot.close();
+  return data;
+};
+
+const scrappOffers = () => {
+  const pairs = {
+    offerURL: "a",
+  };
 };
 
 findOffers();
