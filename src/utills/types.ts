@@ -14,3 +14,5 @@ export interface JobOffer {
   technologies: string[];
   addedAt: string;
 }
+
+export type optionalParamsOffers = Partial<JobOffer>;
